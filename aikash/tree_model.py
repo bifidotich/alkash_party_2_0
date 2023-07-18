@@ -155,9 +155,8 @@ class Tree:
                 if chat[-1].date > int(time.time()) - 30:
                     reply_id_message = chat[-1].id_message
             else:
-                io_context = chat[-1]
-                io = compare_strings_by_fragments(io_context.text_message, text_message)
-                for iter_con in took_pack(chat, 10):
+                io = -1
+                for iter_con in reversed(took_pack(chat, 10)):
                     if compare_strings_by_fragments(iter_con.text_message, text_message) > io:
                         io_context = iter_con
                 reply_id_message = io_context.id_message
@@ -220,6 +219,7 @@ class Context:
 
         # определяем нужен ли ответ
         if self.from_bot:
+            count_bots = len(set([iter.id_user for iter in took_pack(tree[self.id_chat], 10) if iter.from_bot]))
             probability = 1.2 / count_bots
         else:
             probability = 0.6
