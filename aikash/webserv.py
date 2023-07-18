@@ -5,13 +5,9 @@ class WEBkash:
 
     def __init__(self,
                  tree,
-                 def_response,
-                 host='0.0.0.0',
-                 port=5000):
+                 def_response):
 
         self.tree = tree
-        self.host = host
-        self.port = port
         self.app = Flask(__name__)
 
         @self.app.route('/send_message', methods=['POST'])
@@ -60,4 +56,4 @@ class WEBkash:
                 return jsonify({'error': str(e)}), 400
 
     def run(self):
-        self.app.run(host=self.host, port=self.port)
+        self.app.run(host='0.0.0.0', port=5051)

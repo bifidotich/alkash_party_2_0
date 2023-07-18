@@ -7,18 +7,20 @@ import json
 import time
 from dataclasses import dataclass
 
-PATH_CHATS = f'{os.getcwd()}/temp/tree'
-URL_MESSAGE = 'http://127.0.0.1:5052/new_bot_message'
-URL_BOT_INFO = 'http://127.0.0.1:5052/bot_info'
+count_bots = 3
+
 COUNT_CONTEXT_SIZE = 100
 TIME_PASSIVE_MINUTE = 30
 MAX_SIZE_AI_INPUT_TEXT = 60
 
-count_bots = 3
+
+_PATH_CHATS = f'{os.getcwd()}/temp/tree'
+_URL_MESSAGE = 'http://127.0.0.1:5052/new_bot_message'
+_URL_BOT_INFO = 'http://127.0.0.1:5052/bot_info'
 
 
 def serialize_data(obj, filename):
-    directory = PATH_CHATS
+    directory = _PATH_CHATS
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -72,7 +74,7 @@ class Tree:
             serialize_data(self.tree[key_chats], f"{key_chats}")
 
     def deserialize_tree(self):
-        directory_path = PATH_CHATS
+        directory_path = _PATH_CHATS
         if not os.path.isdir(directory_path):
             return
 
@@ -97,7 +99,7 @@ class Tree:
 
     def check_chat_load(self, id_chat):
         if id_chat not in self.tree:
-            des_data = deserialize_data(f'{PATH_CHATS}/{id_chat}.pkl')
+            des_data = deserialize_data(f'{_PATH_CHATS}/{id_chat}.pkl')
             if des_data is not None:
                 self.tree[id_chat] = des_data
 
@@ -182,7 +184,7 @@ class Tree:
     def cycle(self):
         while True:
             print(f"cycle - {time.time()}")
-            time.sleep(5)
+            time.sleep(3)
             try:
                 self.serialize_tree()
                 self.clear_tree()
@@ -214,9 +216,13 @@ class Context:
     # обрабатывает необходимость ответа, в случае истины формирует context
     def work_context(self, tree, def_response):
 
-        # здесь определеям нужен ли ответ
+        # не подтвержден
+        if not self.status:
+            return
+
+        # определяем нужен ли ответ
         if self.from_bot:
-            probability = 1 / count_bots
+            probability = 1.2 / count_bots
         else:
             probability = 0.6
         if random.random() > probability:
@@ -230,13 +236,12 @@ class Context:
                 return find_user(context.reply_context, id_user, step + 1)
             else:
                 try:
-                    res = send_post_request(URL_BOT_INFO, {'id_chat': context.id_chat})
+                    res = send_post_request(_URL_BOT_INFO, {'id_chat': context.id_chat})
                     return random.choice(list(res["id_bots"]))
                 except:
                     return None
 
         user = find_user(self, self.id_user)
-
         if user is None:
             return
 
@@ -245,7 +250,6 @@ class Context:
 
         # генерируем ответ
         output_text = def_response(input_text)
-        # output_text = f"huy {input_text}"
 
         # делаем отправку
         data_context = {
@@ -259,7 +263,7 @@ class Context:
             }
         }
         try:
-            send_post_request(URL_MESSAGE, data_context)
+            send_post_request(_URL_MESSAGE, data_context)
         except:
             return
 
