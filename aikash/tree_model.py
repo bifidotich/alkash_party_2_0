@@ -7,7 +7,6 @@ import json
 import time
 from dataclasses import dataclass
 
-count_bots = 3
 
 COUNT_CONTEXT_SIZE = 100
 TIME_PASSIVE_MINUTE = 30
@@ -16,7 +15,7 @@ MAX_SIZE_AI_INPUT_TEXT = 60
 
 _PATH_CHATS = f'{os.getcwd()}/temp/tree'
 _URL_MESSAGE = 'http://127.0.0.1:5052/new_bot_message'
-_URL_BOT_INFO = 'http://127.0.0.1:5052/bot_info'
+_URL_BOT_INFO = 'http://127.0.0.1:5052/bots_info'
 
 
 def serialize_data(obj, filename):
@@ -49,6 +48,13 @@ def compare_strings_by_fragments(str1, str2):
                 common_fragments.add(fragment)
 
     return len(common_fragments)
+
+
+def took_pack(_list, _len):
+    if len(_list) > _len + 1:
+        return _list[-_len:-1]
+    else:
+        return _list
 
 
 def send_post_request(url, data):
@@ -110,17 +116,13 @@ class Tree:
         for key_chats, sublist in list(self.tree.items()):
             # спонтанный вброс
             if random.random() < 0.15:
-                if len(sublist) > 10:
-                    context = random.choice(sublist[-8:-3])
-                else:
-                    context = random.choice(sublist)
+                context = random.choice(took_pack(sublist, 7))
                 context.work_context(self, self.def_response)
 
     def clear_tree(self):
         try:
             for key_chats, sublist in list(self.tree.items()):
-                if len(sublist) > COUNT_CONTEXT_SIZE:
-                    sublist = sublist[-COUNT_CONTEXT_SIZE:-1]
+                sublist = took_pack(sublist, COUNT_CONTEXT_SIZE)
                 for iter_con in reversed(sublist):
                     if not iter_con.from_bot:
                         if iter_con.date < int(time.time()) - 60 * TIME_PASSIVE_MINUTE:
@@ -150,17 +152,14 @@ class Tree:
         if reply_id_message is None:
             chat = self.tree[id_chat]
             if len(text_message) < 10:
-                if chat[-1].date > int(time.time()) - 20:
+                if chat[-1].date > int(time.time()) - 30:
                     reply_id_message = chat[-1].id_message
             else:
                 io_context = chat[-1]
                 io = compare_strings_by_fragments(io_context.text_message, text_message)
-                if len(chat) > 10:
-                    for iter_con in reversed(chat)[:10]:
-                        if compare_strings_by_fragments(iter_con.text_message, text_message) > io:
-                            io_context = iter_con
-                else:
-                    io_context = chat[-1]
+                for iter_con in took_pack(chat, 10):
+                    if compare_strings_by_fragments(iter_con.text_message, text_message) > io:
+                        io_context = iter_con
                 reply_id_message = io_context.id_message
 
         new_context = Context(id_chat=id_chat,
@@ -183,8 +182,7 @@ class Tree:
 
     def cycle(self):
         while True:
-            print(f"cycle - {time.time()}")
-            time.sleep(3)
+            time.sleep(random.randint(1, 5))
             try:
                 self.serialize_tree()
                 self.clear_tree()
@@ -229,14 +227,14 @@ class Context:
             return
 
         # определяем user
-        def find_user(context, id_user, step=0):
-            if context.id_user != id_user and context.from_bot:
-                return context.id_user
+        def find_user(_context, id_user, step=0):
+            if _context.id_user != id_user and _context.from_bot:
+                return _context.id_user
             elif self.reply_context is not None and step < 3:
-                return find_user(context.reply_context, id_user, step + 1)
+                return find_user(_context.reply_context, id_user, step + 1)
             else:
                 try:
-                    res = send_post_request(_URL_BOT_INFO, {'id_chat': context.id_chat})
+                    res = send_post_request(_URL_BOT_INFO, {'id_chat': _context.id_chat})
                     return random.choice(list(res["id_bots"]))
                 except:
                     return None
