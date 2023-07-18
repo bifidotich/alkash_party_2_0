@@ -8,10 +8,13 @@ import time
 from dataclasses import dataclass
 
 PATH_CHATS = f'{os.getcwd()}/temp/tree'
-URL = 'http://127.0.0.1:5052/new_bot_message'
+URL_MESSAGE = 'http://127.0.0.1:5052/new_bot_message'
+URL_BOT_INFO = 'http://127.0.0.1:5052/bot_info'
 COUNT_CONTEXT_SIZE = 100
 TIME_PASSIVE_MINUTE = 30
 MAX_SIZE_AI_INPUT_TEXT = 60
+
+count_bots = 3
 
 
 def serialize_data(obj, filename):
@@ -103,10 +106,10 @@ class Tree:
 
     def work_tree(self):
         for key_chats, sublist in list(self.tree.items()):
-            # TODO сделать интелектуальный выбор ответчика
-            if random.random() < 0.90:
+            # спонтанный вброс
+            if random.random() < 0.15:
                 if len(sublist) > 10:
-                    context = random.choice(sublist[-6:-1])
+                    context = random.choice(sublist[-8:-3])
                 else:
                     context = random.choice(sublist)
                 context.work_context(self, self.def_response)
@@ -212,25 +215,28 @@ class Context:
     def work_context(self, tree, def_response):
 
         # здесь определеям нужен ли ответ
-        # TODO написать очень много умной хрени
-        if random.random() < 0.10:
+        if self.from_bot:
+            probability = 1 / count_bots
+        else:
+            probability = 0.6
+        if random.random() > probability:
             return
 
         # определяем user
-        # TODO написать очень много умной хрени
-        def find_user(context, id_user):
-            if context.id_user != id_user:
+        def find_user(context, id_user, step=0):
+            if context.id_user != id_user and context.from_bot:
                 return context.id_user
-            elif self.reply_context is not None:
-                return find_user(context.reply_context, id_user)
+            elif self.reply_context is not None and step < 3:
+                return find_user(context.reply_context, id_user, step + 1)
             else:
-                return None
+                try:
+                    res = send_post_request(URL_BOT_INFO, {'id_chat': context.id_chat})
+                    return random.choice(list(res["id_bots"]))
+                except:
+                    return None
 
-        if self.reply_context is not None:
-            user = find_user(self.reply_context, self.id_user)
-        else:
-            # TODO выбрать рандомного бота
-            user = random.randint(99999, 999999)
+        user = find_user(self, self.id_user)
+
         if user is None:
             return
 
@@ -253,7 +259,7 @@ class Context:
             }
         }
         try:
-            response = send_post_request(URL, data_context)
+            send_post_request(URL_MESSAGE, data_context)
         except:
             return
 
