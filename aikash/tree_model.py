@@ -219,7 +219,7 @@ class Context:
 
         # определяем нужен ли ответ
         if self.from_bot:
-            count_bots = len(set([iter.id_user for iter in took_pack(tree[self.id_chat], 10) if iter.from_bot]))
+            count_bots = len(set([iter.id_user for iter in took_pack(tree.tree[self.id_chat], 10) if iter.from_bot]))
             probability = 1.2 / count_bots
         else:
             probability = 0.6
